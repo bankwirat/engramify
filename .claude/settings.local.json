@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(node dist/cli.js bm25 ./src \"embedding\")",
+      "Bash(node /Users/bankwirat/Projects/engramify/dist/cli.js bm25 . \"SAP\")",
+      "Bash(node -e \"console.log\\(require\\('./node_modules/tailwindcss/package.json'\\).version\\)\")",
+      "Bash(node -e \"console.log\\(require\\('./node_modules/vite/package.json'\\).version\\)\")",
+      "Bash(node -e \"console.log\\(require\\('./node_modules/@vitejs/plugin-react/package.json'\\).version\\)\")",
+      "WebFetch(domain:ui.shadcn.com)",
+      "WebSearch"
+    ]
+  }
+}

@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Engramify</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f0f1a;
+      color: #e2e2f0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    header {
+      padding: 16px 24px 0;
+      border-bottom: 1px solid #1e1e3a;
+      flex-shrink: 0;
+    }
+
+    .brand {
+      font-size: 18px;
+      font-weight: 700;
+      color: #a78bfa;
+      margin-bottom: 14px;
+      letter-spacing: -0.3px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 4px;
+    }
+
+    .tab {
+      padding: 8px 18px;
+      border: none;
+      background: none;
+      color: #888;
+      font-size: 13px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: color 0.15s;
+    }
+
+    .tab:hover { color: #ccc; }
+    .tab.active { color: #a78bfa; border-bottom-color: #a78bfa; }
+
+    /* ── Workspace: panels + file viewer side by side ── */
+    #workspace {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    #panels-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    .panel {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      padding: 20px 24px;
+      gap: 12px;
+      overflow: hidden;
+    }
+
+    .panel.active { display: flex; }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .field.grow { flex: 1; }
+
+    label {
+      font-size: 11px;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    input, textarea {
+      background: #16162a;
+      border: 1px solid #2a2a4a;
+      border-radius: 6px;
+      color: #e2e2f0;
+      font-size: 13px;
+      padding: 8px 10px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    input:focus, textarea:focus { border-color: #a78bfa; }
+    input[type="number"] { width: 64px; }
+
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+      font-family: inherit;
+    }
+
+    button {
+      background: #a78bfa;
+      color: #0f0f1a;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 18px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s;
+    }
+
+    button:hover { background: #c4b5fd; }
+    button:disabled { background: #3a3a5a; color: #666; cursor: default; }
+
+    .results {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .result-card {
+      background: #16162a;
+      border: 1px solid #2a2a4a;
+      border-radius: 8px;
+      padding: 12px 14px;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+
+    .result-card:hover { border-color: #4a4a6a; }
+    .result-card.active-card { border-color: #a78bfa; }
+
+    .result-meta {
+      font-size: 11px;
+      color: #a78bfa;
+      margin-bottom: 4px;
+    }
+
+    .result-path {
+      font-size: 11px;
+      color: #6b6b9a;
+      margin-bottom: 6px;
+      font-family: monospace;
+    }
+
+    .result-heading {
+      font-size: 13px;
+      font-weight: 600;
+      color: #e2e2f0;
+      margin-bottom: 6px;
+    }
+
+    .result-snippet {
+      font-size: 13px;
+      color: #c8c8e0;
+      line-height: 1.5;
+    }
+
+    .status {
+      font-size: 12px;
+      color: #666;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .status.error   { color: #f87171; }
+    .status.success { color: #4ade80; }
+
+    .hint {
+      font-size: 11px;
+      color: #444;
+      margin-top: 2px;
+    }
+
+    /* ── File viewer panel ── */
+    #file-panel {
+      width: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border-left: 1px solid transparent;
+      background: #0c0c18;
+      transition: width 0.2s ease, border-color 0.2s ease;
+      flex-shrink: 0;
+    }
+
+    #file-panel.open {
+      width: 440px;
+      border-left-color: #1e1e3a;
+    }
+
+    #fp-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 14px 10px;
+      border-bottom: 1px solid #1e1e3a;
+      flex-shrink: 0;
+    }
+
+    #fp-filename {
+      font-size: 13px;
+      font-weight: 600;
+      color: #e2e2f0;
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    #fp-close {
+      background: none;
+      border: none;
+      color: #555;
+      font-size: 16px;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+      line-height: 1;
+      transition: color 0.15s, background 0.15s;
+    }
+
+    #fp-close:hover { color: #e2e2f0; background: #1e1e3a; }
+
+    #fp-breadcrumb {
+      padding: 6px 14px;
+      font-size: 11px;
+      color: #444;
+      font-family: monospace;
+      border-bottom: 1px solid #1a1a30;
+      flex-shrink: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    #fp-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 12px;
+      line-height: 1.65;
+      color: #9090b0;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    #fp-content mark {
+      background: rgba(167, 139, 250, 0.15);
+      color: #e2e2f0;
+      border-left: 2px solid #a78bfa;
+      padding-left: 4px;
+      border-radius: 0 2px 2px 0;
+      display: block;
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #2a2a4a; border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="brand">⬡ Engramify</div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('search')">Search</button>
+    <button class="tab" onclick="switchTab('ingest')">Ingest</button>
+    <button class="tab" onclick="switchTab('bm25')">BM25</button>
+    <button class="tab" onclick="switchTab('add')">Add Memory</button>
+  </div>
+</header>
+
+<div id="workspace">
+  <div id="panels-wrapper">
+
+    <!-- Hybrid Search -->
+    <div class="panel active" id="panel-search">
+      <div class="row">
+        <div class="field grow">
+          <label>Query</label>
+          <input id="search-query" type="text" placeholder="ask anything about your notes..." />
+        </div>
+        <div class="field">
+          <label>Top K</label>
+          <input id="search-topk" type="number" value="5" min="1" max="50" />
+        </div>
+        <button id="search-btn" onclick="runSearch()">Search</button>
+      </div>
+      <div class="results" id="search-results">
+        <div class="status">Hybrid search (BM25 + vector) over ingested chunks.</div>
+      </div>
+    </div>
+
+    <!-- Ingest -->
+    <div class="panel" id="panel-ingest">
+      <div class="row">
+        <div class="field grow">
+          <label>File or folder</label>
+          <input id="ingest-path" type="text" placeholder="/path/to/notes  or  ./folder" />
+          <div class="hint">Recursively ingests all .md files. Skips unchanged files.</div>
+        </div>
+        <button id="ingest-btn" onclick="runIngest()">Ingest</button>
+      </div>
+      <div class="results" id="ingest-results">
+        <div class="status">Point to a folder of .md files to build the brain.</div>
+      </div>
+    </div>
+
+    <!-- BM25 file search -->
+    <div class="panel" id="panel-bm25">
+      <div class="row">
+        <div class="field grow">
+          <label>Folder</label>
+          <input id="bm25-folder" type="text" placeholder="./  or  /absolute/path" />
+        </div>
+        <div class="field grow">
+          <label>Query</label>
+          <input id="bm25-query" type="text" placeholder="keyword search..." />
+        </div>
+        <div class="field">
+          <label>Top K</label>
+          <input id="bm25-topk" type="number" value="5" min="1" max="50" />
+        </div>
+        <button id="bm25-btn" onclick="runBm25()">Search</button>
+      </div>
+      <div class="results" id="bm25-results">
+        <div class="status">BM25 keyword search over raw files on disk.</div>
+      </div>
+    </div>
+
+    <!-- Add Memory -->
+    <div class="panel" id="panel-add">
+      <div class="field">
+        <label>Text to remember</label>
+        <textarea id="add-text" placeholder="Paste any text, note, or fact..."></textarea>
+      </div>
+      <div>
+        <button id="add-btn" onclick="runAdd()">Add to Memory</button>
+      </div>
+      <div class="results" id="add-results"></div>
+    </div>
+
+  </div><!-- /#panels-wrapper -->
+
+  <!-- File viewer side panel -->
+  <div id="file-panel">
+    <div id="fp-header">
+      <span id="fp-filename"></span>
+      <button id="fp-close" onclick="closeFilePanel()">✕</button>
+    </div>
+    <div id="fp-breadcrumb"></div>
+    <div id="fp-content"></div>
+  </div>
+
+</div><!-- /#workspace -->
+
+<script>
+  const { ipcRenderer } = require('electron');
+  const fs   = require('fs');
+  const path = require('path');
+
+  const TAB_NAMES = ['search', 'ingest', 'bm25', 'add'];
+  document.getElementById('bm25-folder').value = process.cwd();
+  document.getElementById('ingest-path').value = process.cwd();
+
+  // ── Tab switching ──────────────────────────────────────────────────────────
+  function switchTab(name) {
+    document.querySelectorAll('.tab').forEach((t, i) => {
+      t.classList.toggle('active', TAB_NAMES[i] === name);
+    });
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + name).classList.add('active');
+  }
+
+  function setResults(id, html) {
+    document.getElementById(id).innerHTML = html;
+  }
+
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── File viewer panel ──────────────────────────────────────────────────────
+  // Store click data in a map to avoid HTML-escaping headaches in onclick attrs
+  const _fp = {};
+  let _fpSeq = 0;
+  let _activeCard = null;
+
+  function openFilePanel(dataId) {
+    const { file, chunkContent, breadcrumb } = _fp[dataId];
+
+    let fileContent;
+    try {
+      fileContent = fs.readFileSync(file, 'utf-8');
+    } catch (e) {
+      document.getElementById('fp-filename').textContent = path.basename(file);
+      document.getElementById('fp-breadcrumb').textContent = file;
+      document.getElementById('fp-content').textContent = `Cannot open file:\n${file}\n\n${e.message}\n\nTry running: engramify ingest . --force`;
+      document.getElementById('file-panel').classList.add('open');
+      return;
+    }
+
+    // Header
+    document.getElementById('fp-filename').textContent = path.basename(file);
+    document.getElementById('fp-breadcrumb').textContent = breadcrumb || file;
+
+    // Render with highlighted chunk
+    const contentEl = document.getElementById('fp-content');
+    const idx = chunkContent ? fileContent.indexOf(chunkContent) : -1;
+
+    if (idx !== -1) {
+      const before = fileContent.slice(0, idx);
+      const chunk  = fileContent.slice(idx, idx + chunkContent.length);
+      const after  = fileContent.slice(idx + chunkContent.length);
+      contentEl.innerHTML =
+        escHtml(before) +
+        '<mark id="fp-mark">' + escHtml(chunk) + '</mark>' +
+        escHtml(after);
+      setTimeout(() => {
+        const mark = document.getElementById('fp-mark');
+        if (mark) mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 50);
+    } else {
+      contentEl.textContent = fileContent;
+      contentEl.scrollTop = 0;
+    }
+
+    // Active card highlight
+    if (_activeCard) _activeCard.classList.remove('active-card');
+    const card = document.querySelector(`[data-fp-id="${dataId}"]`);
+    if (card) { card.classList.add('active-card'); _activeCard = card; }
+
+    document.getElementById('file-panel').classList.add('open');
+  }
+
+  function closeFilePanel() {
+    document.getElementById('file-panel').classList.remove('open');
+    if (_activeCard) { _activeCard.classList.remove('active-card'); _activeCard = null; }
+  }
+
+  // ── Hybrid Search ──────────────────────────────────────────────────────────
+  async function runSearch() {
+    const query = document.getElementById('search-query').value.trim();
+    const topK  = parseInt(document.getElementById('search-topk').value);
+    if (!query) return;
+
+    const btn = document.getElementById('search-btn');
+    btn.disabled = true; btn.textContent = 'Searching...';
+    setResults('search-results', '<div class="status">Running hybrid search...</div>');
+
+    const res = await ipcRenderer.invoke('hybrid-search', query, topK);
+    btn.disabled = false; btn.textContent = 'Search';
+
+    if (!res.ok) {
+      setResults('search-results', `<div class="status error">Error: ${escHtml(res.error)}</div>`);
+      return;
+    }
+    if (res.results.length === 0) {
+      setResults('search-results', '<div class="status">No results. Try running Ingest first.</div>');
+      return;
+    }
+
+    setResults('search-results', res.results.map((r, i) => {
+      const id = _fpSeq++;
+      _fp[id] = { file: r.file, chunkContent: r.content, breadcrumb: r.path };
+      return `
+        <div class="result-card" data-fp-id="${id}" onclick="openFilePanel(${id})">
+          <div class="result-meta">Result ${i+1} &nbsp;·&nbsp; Score: ${r.score.toFixed(4)}</div>
+          <div class="result-path">${escHtml(r.path)}</div>
+          <div class="result-heading">${escHtml(r.heading)}</div>
+          <div class="result-snippet">${escHtml(r.content.slice(0, 300))}${r.content.length > 300 ? '…' : ''}</div>
+        </div>
+      `;
+    }).join(''));
+  }
+
+  // ── Ingest ─────────────────────────────────────────────────────────────────
+  async function runIngest() {
+    const target = document.getElementById('ingest-path').value.trim();
+    if (!target) return;
+
+    const btn = document.getElementById('ingest-btn');
+    btn.disabled = true; btn.textContent = 'Ingesting...';
+    setResults('ingest-results', '<div class="status">Ingesting files... (may take a moment on first run)</div>');
+
+    const res = await ipcRenderer.invoke('ingest', target);
+    btn.disabled = false; btn.textContent = 'Ingest';
+
+    if (!res.ok) {
+      setResults('ingest-results', `<div class="status error">Error: ${escHtml(res.error)}</div>`);
+    } else {
+      setResults('ingest-results', '<div class="status success">Ingest complete. Switch to Search to query.</div>');
+    }
+  }
+
+  // ── BM25 ───────────────────────────────────────────────────────────────────
+  async function runBm25() {
+    const folder = document.getElementById('bm25-folder').value.trim();
+    const query  = document.getElementById('bm25-query').value.trim();
+    const topK   = parseInt(document.getElementById('bm25-topk').value);
+    if (!folder || !query) return;
+
+    const btn = document.getElementById('bm25-btn');
+    btn.disabled = true; btn.textContent = 'Searching...';
+    setResults('bm25-results', '<div class="status">Searching...</div>');
+
+    const res = await ipcRenderer.invoke('bm25-search', folder, query, topK);
+    btn.disabled = false; btn.textContent = 'Search';
+
+    if (!res.ok) {
+      setResults('bm25-results', `<div class="status error">Error: ${escHtml(res.error)}</div>`);
+      return;
+    }
+    if (res.results.length === 0) {
+      setResults('bm25-results', '<div class="status">No results found.</div>');
+      return;
+    }
+
+    setResults('bm25-results', res.results.map((r, i) => {
+      const id = _fpSeq++;
+      _fp[id] = { file: r.file, chunkContent: r.snippet, breadcrumb: path.relative(folder, r.file) || r.file };
+      return `
+        <div class="result-card" data-fp-id="${id}" onclick="openFilePanel(${id})">
+          <div class="result-meta">Result ${i+1} &nbsp;·&nbsp; Score: ${r.score.toFixed(4)}</div>
+          <div class="result-path">${escHtml(path.relative(folder, r.file) || r.file)}</div>
+          <div class="result-snippet">${escHtml(r.snippet)}</div>
+        </div>
+      `;
+    }).join(''));
+  }
+
+  // ── Add Memory ─────────────────────────────────────────────────────────────
+  async function runAdd() {
+    const text = document.getElementById('add-text').value.trim();
+    if (!text) return;
+
+    const btn = document.getElementById('add-btn');
+    btn.disabled = true; btn.textContent = 'Adding...';
+    setResults('add-results', '<div class="status">Generating embedding...</div>');
+
+    const res = await ipcRenderer.invoke('add-memory', text);
+    btn.disabled = false; btn.textContent = 'Add to Memory';
+
+    if (!res.ok) {
+      setResults('add-results', `<div class="status error">Error: ${escHtml(res.error)}</div>`);
+    } else {
+      document.getElementById('add-text').value = '';
+      setResults('add-results', '<div class="status success">Memory added successfully.</div>');
+    }
+  }
+
+  // Enter to submit
+  document.getElementById('search-query').addEventListener('keydown', e => { if (e.key === 'Enter') runSearch(); });
+  document.getElementById('bm25-query').addEventListener('keydown',   e => { if (e.key === 'Enter') runBm25(); });
+</script>
+</body>
+</html>
